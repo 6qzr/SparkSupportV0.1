@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("postgresql://sparksupport_db_user:y86bHbnWyDV7XZfJBFIyXBfdVYFXK7yK@dpg-d2lh9tmr433s7390elt0-a/sparksupport_db")
 }
 
 model User {
