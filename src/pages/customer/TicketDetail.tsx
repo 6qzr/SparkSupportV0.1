@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSecureParams } from '../../hooks/useSecureParams';
 import { ArrowLeft, Clock } from 'lucide-react';
@@ -9,6 +9,9 @@ import { StatusBadge, PriorityBadge } from '../../components/ui/Badge';
 import { Thread } from '../../components/tickets/Thread';
 import { ReplyBox } from '../../components/tickets/ReplyBox';
 import { Skeleton } from '../../components/ui/Loading';
+import { SatisfactionSurveyModal } from '../../components/ui/SatisfactionSurveyModal';
+import { SurveySuccessToast } from '../../components/ui/SurveySuccessToast';
+import { useCreateSurvey, useSurvey } from '../../hooks/useSurvey';
 import { formatDistanceToNow } from 'date-fns';
 
 export const TicketDetail: React.FC = () => {
@@ -16,6 +19,21 @@ export const TicketDetail: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToast } = useToast();
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [surveyRating, setSurveyRating] = useState(0);
+  const [previousStatus, setPreviousStatus] = useState<string | null>(null);
+
+  // All hooks must be called before any conditional returns
+  const { data: ticketData, isLoading, error } = useTicket(id || '');
+  const { data: categories = [] } = useCategories();
+  const { data: users = [] } = useUsers();
+  const createMessageMutation = useCreateMessage();
+  const createSurveyMutation = useCreateSurvey();
+  const { data: existingSurvey } = useSurvey(id || '');
+
+  const ticket = ticketData?.ticket;
+  const messages = ticket?.messages || [];
 
   // Security: Validate ticket ID using useEffect to avoid render warnings
   useEffect(() => {
@@ -24,18 +42,104 @@ export const TicketDetail: React.FC = () => {
     }
   }, [id, navigate]);
 
-  // Early return if no ID (component will be redirected via useEffect)
-  if (!id) {
-    return null;
-  }
+  // Survey trigger logic - check for status changes to resolved/closed
+  useEffect(() => {
+    console.log('Survey Effect Debug:', {
+      ticket: !!ticket,
+      ticketStatus: ticket?.status,
+      previousStatus,
+      showSurveyModal
+    });
 
-  const { data: ticketData, isLoading, error } = useTicket(id);
-  const { data: categories = [] } = useCategories();
-  const { data: users = [] } = useUsers();
-  const createMessageMutation = useCreateMessage();
+    if (ticket && previousStatus !== null && !existingSurvey) {
+      const currentStatus = ticket.status;
+      
+      console.log('Status Change Check:', {
+        currentStatus,
+        previousStatus,
+        isResolvedOrClosed: currentStatus === 'resolved' || currentStatus === 'closed',
+        statusChanged: previousStatus !== currentStatus,
+        wasPreviouslyNotFinished: previousStatus !== 'resolved' && previousStatus !== 'closed',
+        existingSurvey: !!existingSurvey
+      });
+      
+      // Trigger survey if status changed to resolved or closed and no survey exists
+      if ((currentStatus === 'resolved' || currentStatus === 'closed') && 
+          previousStatus !== currentStatus &&
+          previousStatus !== 'resolved' && 
+          previousStatus !== 'closed') {
+        
+        console.log('🎉 Triggering survey modal!');
+        // Small delay to ensure status change is visually processed
+        setTimeout(() => {
+          setShowSurveyModal(true);
+        }, 1000);
+      }
+    }
+    
+    // Check if ticket is already closed/resolved and no previous status (first load)
+    if (ticket && previousStatus === null && !existingSurvey) {
+      const currentStatus = ticket.status;
+      if (currentStatus === 'resolved' || currentStatus === 'closed') {
+        console.log('🎯 Ticket already closed/resolved on load, checking if survey needed');
+        // Only show survey if none exists yet
+        setTimeout(() => {
+          setShowSurveyModal(true);
+        }, 2000);
+      }
+    }
+    
+    // Update previous status
+    if (ticket) {
+      setPreviousStatus(ticket.status);
+    }
+  }, [ticket?.status, previousStatus, showSurveyModal, existingSurvey]);
 
-  const ticket = ticketData?.ticket;
-  const messages = ticket?.messages || [];
+  // Survey submission handler
+  const handleSurveySubmit = async (surveyData: any) => {
+    if (!ticket) return;
+    
+    try {
+      // Calculate average rating
+      const ratings = [
+        surveyData.overallRating,
+        surveyData.responseTime,
+        surveyData.helpfulness,
+        surveyData.professionalism,
+        surveyData.resolutionQuality
+      ].filter(rating => rating > 0);
+      
+      const averageRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+      setSurveyRating(averageRating);
+
+      // Submit survey to backend
+      const surveyPayload = {
+        ticketId: ticket.id,
+        data: {
+          overallRating: surveyData.overallRating,
+          responseTime: surveyData.responseTime,
+          helpfulness: surveyData.helpfulness,
+          professionalism: surveyData.professionalism,
+          resolutionQuality: surveyData.resolutionQuality,
+          feedback: surveyData.feedback || '',
+          improvements: surveyData.improvements || ''
+        }
+      };
+      
+      console.log('📝 Submitting survey data:', surveyPayload);
+      await createSurveyMutation.mutateAsync(surveyPayload);
+      
+      console.log('Survey submitted successfully:', { ticketId: ticket.id, surveyData, averageRating });
+      
+      setShowSurveyModal(false);
+      setShowSuccessToast(true);
+      
+      addToast('Thank you for your feedback! Your response helps us improve our service.', 'success');
+    } catch (error) {
+      console.error('Error submitting survey:', error);
+      addToast(error instanceof Error ? error.message : 'Failed to submit survey. Please try again.', 'error');
+    }
+  };
 
   // Debug logging
   console.log('TicketDetail Debug:', {
@@ -47,6 +151,11 @@ export const TicketDetail: React.FC = () => {
     error,
     user
   });
+
+  // Early return if no ID (component will be redirected via useEffect)
+  if (!id) {
+    return null;
+  }
 
   if (isLoading) {
     return (
@@ -259,6 +368,22 @@ export const TicketDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Customer Satisfaction Survey Modal */}
+      <SatisfactionSurveyModal
+        isOpen={showSurveyModal}
+        onClose={() => setShowSurveyModal(false)}
+        onSubmit={handleSurveySubmit}
+        ticketNumber={ticket?.id}
+        staffName={users.find(u => u.id === ticket?.assignedToId)?.name}
+      />
+
+      {/* Survey Success Toast */}
+      <SurveySuccessToast
+        isVisible={showSuccessToast}
+        averageRating={surveyRating}
+        onClose={() => setShowSuccessToast(false)}
+      />
     </div>
   );
 };

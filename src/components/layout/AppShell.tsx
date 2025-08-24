@@ -23,7 +23,12 @@ import {
   Award,
   Bot,
   MessageCircle,
-  ShoppingBag
+  ShoppingBag,
+  HelpCircle,
+  Home,
+  Search,
+  X,
+  BarChart,
 } from 'lucide-react';
 import { RoleBadge } from '../ui/Badge';
 import { SimpleThemeToggle } from '../ui/SimpleThemeToggle';
@@ -78,7 +83,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         return [
           { path: '/my/tickets', label: 'My Tickets', icon: Ticket },
           { path: '/my/tickets/new', label: 'New Ticket', icon: Plus },
-          { path: '/my/marketplace', label: 'Marketplace', icon: ShoppingBag },
           { path: '/my/notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
         ];
       case 'staff':
@@ -92,13 +96,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         ];
       case 'admin':
         return [
+          { path: '/admin', label: 'Dashboard', icon: Home },
           { path: '/admin/categories', label: 'Categories', icon: Tags },
-          // { path: '/admin/priorities', label: 'Priorities', icon: AlertTriangle }, // Temporarily disabled
+          { path: '/admin/priorities', label: 'Priorities', icon: AlertTriangle },
           { path: '/admin/staff', label: 'Staff', icon: Users },
           { path: '/admin/slack', label: 'Slack Integration', icon: MessageCircle, badge: 'NEW' },
           { path: '/admin/ai-support', label: 'AI Support', icon: Bot, badge: 'NEW' },
           { path: '/admin/marketplace', label: 'Marketplace', icon: ShoppingBag },
           { path: '/admin/leaderboard', label: 'Leaderboard', icon: Trophy },
+          { path: '/admin/survey-analytics', label: 'Survey Analytics', icon: BarChart, badge: 'NEW' },
           { path: '/admin/notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
         ];
       default:
@@ -381,11 +387,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
       {/* Main Content */}
       <div className="ml-64">
-        <main className="p-8 min-h-screen transition-all duration-300">
+        <main className="transition-all duration-300">
           <div className="animate-fade-in">
-            <div className="max-w-7xl mx-auto">
-              {children}
-            </div>
+            {children}
           </div>
         </main>
         

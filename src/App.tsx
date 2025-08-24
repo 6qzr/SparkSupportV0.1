@@ -27,10 +27,12 @@ import { StaffTicketDetail } from './pages/staff/StaffTicketDetail';
 import { StaffDashboard } from './pages/staff/StaffDashboard';
 import { StaffLeaderboard } from './pages/staff/StaffLeaderboard';
 import { AdminCategories } from './pages/admin/AdminCategories';
-// import { AdminPriorities } from './pages/admin/AdminPriorities'; // Temporarily disabled
+import { AdminPriorities } from './pages/admin/AdminPriorities';
 import { AdminStaff } from './pages/admin/AdminStaff';
 import { AdminSlack } from './pages/admin/AdminSlack';
+import { AdminSurveyAnalytics } from './pages/admin/AdminSurveyAnalytics';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { NotificationPreferences } from './pages/NotificationPreferences';
 import { AISupport } from './pages/AISupport';
 import { Marketplace } from './pages/Marketplace';
 
@@ -154,18 +156,7 @@ function App() {
                               </ProtectedRoute>
                             } 
                           />
-                          <Route 
-                            path="/my/marketplace" 
-                            element={
-                              <ProtectedRoute allowedRoles={['customer']}>
-                                <AppShell>
-                                  <PageTransition>
-                                    <Marketplace />
-                                  </PageTransition>
-                                </AppShell>
-                              </ProtectedRoute>
-                            } 
-                          />
+
                           <Route 
                             path="/my/notifications" 
                             element={
@@ -173,6 +164,18 @@ function App() {
                                 <AppShell>
                                   <PageTransition>
                                     <NotificationsPage />
+                                  </PageTransition>
+                                </AppShell>
+                              </ProtectedRoute>
+                            } 
+                          />
+                          <Route 
+                            path="/my/notification-preferences" 
+                            element={
+                              <ProtectedRoute allowedRoles={['customer']}>
+                                <AppShell>
+                                  <PageTransition>
+                                    <NotificationPreferences />
                                   </PageTransition>
                                 </AppShell>
                               </ProtectedRoute>
@@ -279,7 +282,7 @@ function App() {
                               </ProtectedRoute>
                             } 
                           />
-                          {/* <Route 
+                          <Route 
                             path="/admin/priorities" 
                             element={
                               <ProtectedRoute allowedRoles={['admin']}>
@@ -290,7 +293,7 @@ function App() {
                                 </AppShell>
                               </ProtectedRoute>
                             } 
-                          /> */}
+                          />
                           <Route 
                             path="/admin/staff" 
                             element={
@@ -347,6 +350,16 @@ function App() {
                                   <PageTransition>
                                     <StaffLeaderboard />
                                   </PageTransition>
+                                </AppShell>
+                              </ProtectedRoute>
+                            } 
+                          />
+                          <Route 
+                            path="/admin/survey-analytics" 
+                            element={
+                              <ProtectedRoute allowedRoles={['admin']}>
+                                <AppShell>
+                                  <AdminSurveyAnalytics />
                                 </AppShell>
                               </ProtectedRoute>
                             } 

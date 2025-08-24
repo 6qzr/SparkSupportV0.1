@@ -14,12 +14,15 @@ const rateLimit = require('express-rate-limit');
 const authRoutes = require('./routes/auth');
 const ticketRoutes = require('./routes/tickets');
 const categoryRoutes = require('./routes/categories');
+const priorityRoutes = require('./routes/priorities');
 const userRoutes = require('./routes/users');
 const emailRoutes = require('./routes/email');
 const leaderboardRoutes = require('./routes/leaderboard');
 const slackRoutes = require('./routes/slack');
-const chatRoutes = require('./routes/chat');
 const marketplaceRoutes = require('./routes/marketplace');
+const chatRoutes = require('./routes/chat');
+const notificationRoutes = require('./routes/notifications');
+const surveyRoutes = require('./routes/surveys');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -91,12 +94,15 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/priorities', priorityRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/slack', slackRoutes);
-app.use('/api/chat', chatRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/surveys', surveyRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

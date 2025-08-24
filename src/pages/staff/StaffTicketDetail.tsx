@@ -12,15 +12,20 @@ import { ReplyBox } from '../../components/tickets/ReplyBox';
 import { AssignDrawer } from '../../components/tickets/AssignDrawer';
 import { InternalNotes } from '../../components/tickets/InternalNotes';
 import { Skeleton } from '../../components/ui/Loading';
+import { SurveyResults } from '../../components/ui/SurveyResults';
+import { useSurvey } from '../../hooks/useSurvey';
 import { formatDistanceToNow } from 'date-fns';
 import { Status } from '../../types';
+import { useNotificationService } from '../../hooks/useNotificationService';
 
 export const StaffTicketDetail: React.FC = () => {
   const { id } = useSecureParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToast } = useToast();
+  const { sendNotification } = useNotificationService();
   const [isAssignDrawerOpen, setIsAssignDrawerOpen] = useState(false);
+  const { data: surveyData } = useSurvey(id);
 
   // Enhanced security validation for ticket ID
   useEffect(() => {
@@ -75,6 +80,22 @@ export const StaffTicketDetail: React.FC = () => {
         },
       });
 
+      // Send notification to customer about staff reply
+      const customer = users.find(u => u.id === ticket.customerId);
+      if (customer) {
+        await sendNotification({
+          type: 'staff_reply',
+          ticketId: ticket.id,
+          ticketSubject: ticket.subject,
+          recipientUserId: customer.id,
+          metadata: {
+            staffName: user.name,
+            message: data.message,
+            currentStatus: ticket.status
+          }
+        });
+      }
+
       addToast('Reply sent successfully!', 'success');
     } catch {
       addToast('Failed to send reply. Please try again.', 'error');
@@ -102,14 +123,45 @@ export const StaffTicketDetail: React.FC = () => {
   const handleStatusChange = async (newStatus: Status) => {
     if (!ticket) return;
 
+    const oldStatus = ticket.status;
+    
+    console.log('🔄 Staff changing ticket status:', {
+      ticketId: ticket.id,
+      oldStatus,
+      newStatus,
+      customerId: ticket.customerId
+    });
+
     try {
       await updateTicketMutation.mutateAsync({
         id: ticket.id,
         data: { status: newStatus },
       });
 
+      console.log('✅ Status change successful, sending notification');
+
+      // Send notification to customer about status change
+      const customer = users.find(u => u.id === ticket.customerId);
+      if (customer) {
+        await sendNotification({
+          type: 'status_change',
+          ticketId: ticket.id,
+          ticketSubject: ticket.subject,
+          recipientUserId: customer.id,
+          metadata: {
+            oldStatus,
+            newStatus,
+            staffName: user?.name,
+            message: `Status changed from ${oldStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`
+          }
+        });
+        
+        console.log('📧 Notification sent to customer');
+      }
+
       addToast(`Ticket status updated to ${newStatus.replace('_', ' ')}!`, 'success');
-    } catch {
+    } catch (error) {
+      console.error('❌ Failed to update status:', error);
       addToast('Failed to update status. Please try again.', 'error');
     }
   };
@@ -323,6 +375,20 @@ export const StaffTicketDetail: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Customer Satisfaction Survey Results */}
+          <SurveyResults
+            surveyData={surveyData ? {
+              overallRating: surveyData.overallRating,
+              responseTime: surveyData.responseTime,
+              helpfulness: surveyData.helpfulness,
+              professionalism: surveyData.professionalism,
+              resolutionQuality: surveyData.resolutionQuality,
+              submittedAt: surveyData.submittedAt,
+              customerName: customer?.name
+            } : undefined}
+            isVisible={true}
+          />
         </div>
       </div>
 

@@ -17,94 +17,20 @@ import { AnimatedBackground } from '../components/ui/AnimatedBackground';
 import { GlassmorphismCard } from '../components/ui/GlassmorphismCard';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import { PurchaseModal } from '../components/ui/PurchaseModal';
+import { useMarketplaceItems, usePurchaseItem, type MarketplaceItem } from '../hooks/useMarketplace';
 
-// Mock marketplace items with enhanced data
-const marketplaceItems = [
-  {
-    id: '1',
-    name: 'Priority Support',
-    description: 'Get your tickets resolved with priority handling and faster response times.',
-    price: 50,
-    category: 'Support',
-    rating: 4.9,
-    reviews: 234,
-    image: '🚀',
-    popular: true,
-    features: ['24/7 Priority Support', 'Faster Response Time', 'Dedicated Agent'],
-    color: 'from-blue-600 to-cyan-600'
-  },
-  {
-    id: '2',
-    name: 'Custom Avatar',
-    description: 'Personalize your profile with unique avatars and badges.',
-    price: 25,
-    category: 'Customization',
-    rating: 4.7,
-    reviews: 156,
-    image: '🎨',
-    features: ['50+ Avatar Options', 'Custom Badges', 'Profile Themes'],
-    color: 'from-purple-600 to-pink-600'
-  },
-  {
-    id: '3',
-    name: 'Advanced Analytics',
-    description: 'Detailed insights into your support interactions and performance.',
-    price: 75,
-    category: 'Analytics',
-    rating: 4.8,
-    reviews: 89,
-    image: '📊',
-    features: ['Detailed Reports', 'Performance Metrics', 'Data Export'],
-    color: 'from-green-600 to-blue-600'
-  },
-  {
-    id: '4',
-    name: 'VIP Status',
-    description: 'Unlock exclusive features and premium support experience.',
-    price: 100,
-    category: 'Premium',
-    rating: 5.0,
-    reviews: 45,
-    image: '👑',
-    premium: true,
-    features: ['All Premium Features', 'Exclusive Access', 'VIP Badge'],
-    color: 'from-yellow-600 to-orange-600'
-  },
-  {
-    id: '5',
-    name: 'Team Collaboration',
-    description: 'Enhanced team features for better collaboration and communication.',
-    price: 60,
-    category: 'Team',
-    rating: 4.6,
-    reviews: 178,
-    image: '👥',
-    features: ['Team Channels', 'File Sharing', 'Video Calls'],
-    color: 'from-indigo-600 to-purple-600'
-  },
-  {
-    id: '6',
-    name: 'AI Assistant Pro',
-    description: 'Advanced AI-powered assistance for instant support and solutions.',
-    price: 80,
-    category: 'AI',
-    rating: 4.9,
-    reviews: 267,
-    image: '🤖',
-    new: true,
-    features: ['24/7 AI Support', 'Smart Suggestions', 'Auto-Resolution'],
-    color: 'from-cyan-600 to-blue-600'
-  }
-];
-
-const categories = ['All', 'Support', 'Customization', 'Analytics', 'Premium', 'Team', 'AI'];
+const categories = ['All', 'Audio', 'Smartphones', 'Gaming', 'Laptops', 'Wearables', 'Tablets'];
 
 export const Marketplace: React.FC = () => {
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+
+  // Use the marketplace hook to get items
+  const { data: marketplaceItems = [], isLoading, error } = useMarketplaceItems();
+  const purchaseItemMutation = usePurchaseItem();
 
   const filteredItems = marketplaceItems.filter(item => {
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
@@ -137,12 +63,30 @@ export const Marketplace: React.FC = () => {
     }
   };
 
-  const handlePurchase = (item: any) => {
+  const handlePurchase = (item: MarketplaceItem) => {
     setSelectedItem(item);
     setShowPurchaseModal(true);
   };
 
-  const MarketplaceCard: React.FC<{ item: any; index: number }> = ({ item, index }) => (
+  const handleConfirmPurchase = async () => {
+    if (!selectedItem) return;
+    
+    try {
+      await purchaseItemMutation.mutateAsync({
+        itemId: selectedItem.id,
+        itemName: selectedItem.name,
+        pointsCost: selectedItem.price,
+        category: selectedItem.category,
+        vendor: 'SparkSupport Store'
+      });
+      setShowPurchaseModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      // Error is already handled by the mutation's onError
+    }
+  };
+
+  const MarketplaceCard: React.FC<{ item: MarketplaceItem; index: number }> = ({ item, index }) => (
     <motion.div
       variants={itemVariants}
       whileHover={{ y: -8, scale: 1.02 }}
@@ -281,18 +225,27 @@ export const Marketplace: React.FC = () => {
                   {item.price}
                 </span>
               </div>
-              <span className="text-white/60 text-xs">Support Points</span>
+              <span className="text-white/60 text-xs">Points</span>
             </div>
 
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => handlePurchase(item)}
-              disabled={!user?.points || user.points < item.price}
+              disabled={!user?.points || user.points < item.price || purchaseItemMutation.isPending}
               className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Buy Now</span>
+              {purchaseItemMutation.isPending ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Buy Now</span>
+                </>
+              )}
             </motion.button>
           </div>
         </div>
@@ -300,9 +253,54 @@ export const Marketplace: React.FC = () => {
     </motion.div>
   );
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <AnimatedBackground variant="marketplace">
+        <div className="h-96 flex items-center justify-center">
+          <div className="text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full mb-4"
+            >
+              <Gift className="w-8 h-8 text-white" />
+            </motion.div>
+            <h2 className="text-xl font-semibold text-white mb-2">Loading Marketplace...</h2>
+            <p className="text-white/70">Preparing amazing deals for you</p>
+          </div>
+        </div>
+      </AnimatedBackground>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <AnimatedBackground variant="marketplace">
+        <div className="h-96 flex items-center justify-center">
+          <GlassmorphismCard variant="intense" className="max-w-md mx-auto text-center">
+            <h2 className="text-xl font-bold text-white mb-4">Unable to Load Marketplace</h2>
+            <p className="text-white/70 mb-4">
+              We're having trouble loading the marketplace items. Please try again later.
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl"
+            >
+              Try Again
+            </motion.button>
+          </GlassmorphismCard>
+        </div>
+      </AnimatedBackground>
+    );
+  }
+
   return (
     <AnimatedBackground variant="marketplace">
-      <div className="min-h-screen">
+      <div className="marketplace-container min-h-screen pb-32">
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -319,11 +317,11 @@ export const Marketplace: React.FC = () => {
             </motion.div>
             
             <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-6">
-              Support Marketplace
+              Rewards Marketplace
             </h1>
             
             <p className="text-xl text-white/70 mb-8 max-w-2xl mx-auto">
-              Enhance your support experience with premium features, tools, and personalization options
+              Redeem your earned support points for amazing tech products and gadgets
             </p>
 
             <GlassmorphismCard variant={"subtle" as const} className="inline-flex items-center space-x-4 px-6 py-3">
@@ -340,7 +338,7 @@ export const Marketplace: React.FC = () => {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="relative z-10 max-w-7xl mx-auto px-6 pb-16"
+          className="relative z-10 max-w-7xl mx-auto px-6 pb-32"
         >
           {/* Search and Filter */}
           <motion.div variants={itemVariants} className="mb-8">
@@ -416,15 +414,27 @@ export const Marketplace: React.FC = () => {
         </motion.div>
 
         {/* Purchase Modal */}
-        <PurchaseModal
-          isOpen={showPurchaseModal}
-          onClose={() => setShowPurchaseModal(false)}
-          item={selectedItem}
-          onPurchase={(item) => {
-            console.log('Purchasing:', item);
-            setShowPurchaseModal(false);
-          }}
-        />
+        {selectedItem && (
+          <PurchaseModal
+            isOpen={showPurchaseModal}
+            onClose={() => {
+              setShowPurchaseModal(false);
+              setSelectedItem(null);
+            }}
+            onConfirm={handleConfirmPurchase}
+            item={{
+              id: selectedItem.id,
+              name: selectedItem.name,
+              description: selectedItem.description,
+              points: selectedItem.price,
+              category: selectedItem.category,
+              rating: selectedItem.rating,
+              image: selectedItem.image,
+              vendor: 'SparkSupport Store'
+            }}
+            userPoints={user?.points || 0}
+          />
+        )}
       </div>
     </AnimatedBackground>
   );
