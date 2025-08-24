@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { User, Category, Ticket, TicketMessage } from '../types';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 interface LoginRequest {
   email: string;
